@@ -1,0 +1,387 @@
+#########################################################################################################
+#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+#~#~#~#~#~#~#~#~#                          Load the data                          #~#~#~#~#~#~#~#~#~#~#~#
+#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+#########################################################################################################
+
+#######################################
+######### Before starting... ##########
+#######################################
+
+# Check if libraries are already installed. If not, install them.
+
+list.of.packages <- c("gridExtra",
+                      "GEOquery",
+                      "ProjecTILS",
+                      "ggplot2",
+                      "ellipsis",
+                      "Seurat",
+                      "SeuratData",
+                      "SeuratDisk",
+                      "dplyr",
+                      "patchwork",
+                      "BiocManager",
+                      "metap",
+                      "xlsx",
+                      "plyr",
+                      "tidyverse",
+                      "dplyr",
+                      "renv",
+                      "BiocManager",
+                      "Matrix")
+
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])] 
+if(length(new.packages)) install.packages(new.packages)
+
+##############################
+######### Libraries ##########
+##############################
+
+library(ellipsis)
+library(Seurat)
+library(SeuratData)
+library(SeuratDisk)
+library(dplyr)
+library(patchwork)
+library(BiocManager)
+library(metap)
+library(xlsx)
+library(plyr)
+library(tidyverse)
+library(ggplot2)
+library(renv)
+library(Matrix)
+library(ProjecTILs)
+library(gridExtra)
+library(GEOquery)
+
+################################################################
+#########   Loading data to create the Seurat object   #########
+################################################################
+
+# Option 1: from .rds
+
+data <- readRDS(file = 'file.rds', refhook = NULL)
+
+# Option 2: from .csv
+
+data <- read.csv('file.csv', header=T, row.names=1, sep = ",", dec = ".")
+
+# Option 3: using barcodes.tsv.gz, genes.tsv.gz and matrix.mtx.gz. Files must contain those specific names.
+
+seurat_object_dir <- 'C:/filepath'
+list.files(seurat_object_dir)
+data <- Read10X(seurat_object.dir = seurat_object_dir)
+
+# Option 4: load .h5seurat objects
+
+data <- LoadH5Seurat('file.h5Seurat')
+
+# Option 5: using barcodes.tsv.gz, genes.tsv.gz and matrix.mtx.gz files when the matrix is a dgTMatrix (sparse matrices)
+
+matrix_dir <- 'C:/filepath'
+
+barcode.path <- paste0(matrix_dir, 'barcodes.tsv.gz')
+features.path <- paste0(matrix_dir, 'features.tsv.gz')
+metaseurat_object.path <- paste0(matrix_dir, 'metaseurat_object.tsv.gz')
+
+matrix.path <- paste0(matrix_dir, 'matrix.mtx.gz')
+mat <- readMM(file = matrix.path) 
+
+feature.names <- read.delim(features.path,
+                           header = TRUE,
+                           stringsAsFactors = FALSE,
+                           row.names = 2) # Check carefully
+
+barcode.names <- read.delim(barcode.path,
+                           header = FALSE,
+                           stringsAsFactors = FALSE)
+
+colnames(mat) <- barcode.names$V1
+rownames(mat) <- feature.names$SYMBOL
+
+
+metaseurat_object <- read.delim(metaseurat_object.path,
+                               header = TRUE,
+                               stringsAsFactors = FALSE,
+                               row.names = 1)                 # Metadata should be added at the CreateSeurat step.
+
+#############################################
+######### Create the Seurat object ##########
+#############################################
+
+seurat_object <- CreateSeuratObject(counts = expression_matrix)
+
+DefaultAssay(seurat_object) <- "integrated/RNA"
+
+# Add metadata to a Seurat object:
+
+# Option 1
+seurat_object <- CreateSeuratObject(counts = expression_matrix, meta.data = 'metadata_object')
+
+# Option 2
+seurat_object <- AddMetaseurat_object(object = 'seuratobject', metaseurat_object = 'metadata_object')
+
+############################################################################################################
+######### Create the Seurat object from merged file including "R" or "NR" within the sample names ##########
+############################################################################################################
+
+# Example using the dataset from PMID: 33723257
+# Filtrar dataset y crear Seurat object (data)
+
+# Step 1: check which patients are responders (R) and which non-responders (NR)
+
+data
+cols <- names(data)
+
+# Step 2: Extract the info. corresponding to "R" at T0 and create a Seurat
+
+R.T0 <- cols[grep(pattern="^R.T0", cols)] # ^ means "starts with"
+R.T0.data <- subset(countsData, select = R.T0)
+R.T0.data.seurat <- CreateSeuratObject(counts= R.T0.data, project = "R.T0.data", min.cells = 3, min.features = 200)
+
+# Step 3: Identify the patients of the R.T0 group
+
+patient <- substr(R.T0, 10, 11) # Extract the characters 10 y 11 from the sample name, corresponding to the patient ID
+patient <- data.frame(patient, row.names = R.T0) # Create a data.frame with these info. in a column named 'patient'. Important to keep the row.names as the original.
+
+# Step 4: Merge metadata
+
+R.T0.data.seurat <- AddMetaData(object = R.T0.data.seurat, metadata = patient)
+R.T0.data.seurat$group <- "R"
+patients.numbers <- unique(patient$patient) # Listed all the patients' IDs.
+
+############################################
+######### QC analysis of a Seurat ##########
+############################################
+
+# Add the percentage of mitochondrial genes
+
+seurat_object[["percent.mt"]] <- PercentageFeatureSet(seurat_object, pattern = "^MT-")
+
+# Visualize the QC indicators and determine a cutoff
+
+VlnPlot(seurat_object, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+
+seurat_object <- subset(seurat_object, subset = nFeature_RNA > 100 & nFeature_RNA < 800)
+seurat_object <- subset(seurat_object, subset = nCount_RNA > 200 & nCount_RNA < 1250)
+seurat_object <- subset(seurat_object, subset = percent.mt > 0 & percent.mt < 5)
+
+plot1 <- FeatureScatter(seurat_object, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2 <- FeatureScatter(seurat_object, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+plot1 + plot2
+
+################################################
+######### Normalize the Seurat object ##########
+################################################
+
+seurat_object <- Normalizeseurat_object(seurat_object, normalization.method = "LogNormalize", scale.factor = 10000)
+
+###############################################################
+######### Identification of highly variable features ##########
+###############################################################
+
+seurat_object <- FindVariableFeatures(seurat_object, selection.method = "vst", nfeatures = 3000, verbose = T)
+
+#top10 <- head(VariableFeatures(object = seurat_object), 10)
+
+#plot1 <- VariableFeaturePlot(S2)
+#plot2 <- LabelPoints(plot = plot1, points = top10, repel = F)
+#plot1 + plot2
+
+##############################################
+######### Scaling the Seurat object ##########
+##############################################
+
+seurat_object.genes <- rownames(seurat_object)
+seurat_object <- Scaleseurat_object(seurat_object, features = seurat_object.genes)
+
+########################################################################################
+######### Perform linear dimensional reduction and determine 'dimensionality' ##########
+########################################################################################
+
+seurat_object<- RunPCA(seurat_object, features = VariableFeatures(object = seurat_object))
+ElbowPlot(seurat_object)
+#print(seurat_object[["pca"]], dims = 1:5, nfeatures = 5)
+
+# Seurat prOVides several useful ways of visualizing both cells and features that define the PCA
+
+# Method 1
+#VizDimLoadings(seurat_object, dims = 1:5, reduction = "pca", ncol= 5)
+
+# Method 2
+#DimPlot(seurat_object, reduction = "pca", dims = c(1,2))
+
+# Method 3
+#DimHeatmap(seurat_object, dims = 1:20, cells = 500, balanced = TRUE)
+
+# Method 4
+
+#seurat_object <- JackStraw(seurat_object, num.replicate = 100)
+#seurat_object <- ScoreJackStraw(seurat_object, dims = 1:20)
+#JackStrawPlot(seurat_object, dims = 1:10) # Tarda bastante en analizar
+
+#################################################################
+######### Run non-linear dimensional reduction (umap)  ##########
+#################################################################
+
+# The greater the number of PCs considered, the higher the resolution of the umap.
+# The higher the resolution, the greater the number of populations generated.
+
+seurat_object <- FindNeighbors(seurat_object, dims = 1:20)
+seurat_object <- FindClusters(seurat_object, resolution = 2.0)
+
+#head(Idents(seurat_object), 5)
+
+seurat_object <- RunUMAP(seurat_object, dims = 1:20)
+
+# Represent the umap by patients' IDs, group or populations respectively:
+
+p1 <- DimPlot(seurat_object, reduction = "umap", group.by = "patient")
+p2 <- DimPlot(seurat_object, reduction = "umap", group.by = "group")
+p3 <- DimPlot(seurat_object, reduction = "umap", label = TRUE, repel = TRUE)
+
+p1 + p2 + p3
+
+#################################################################################
+######### Integrative analysis (use to merge processed Seurat objects) ##########
+#################################################################################
+
+# Tutorial: https://satijalab.org/seurat/articles/integration_introduction.html
+
+# Step 1: To normalize and identify variable features for each Seurat object independently.
+
+liseurat_objectt <- lapply(X = c(seurat_object1, seurat_object2), FUN = function(x) {
+    x <- NormalizeData(x)
+  x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 3000)
+})
+
+# Step 2: To identify features that are repeatedly variable across datasets for integration.
+
+features <- SelectIntegrationFeatures(object.list = list, nfeatures = 3000)
+anchors <- FindIntegrationAnchors(object.list = list, anchor.features = features)
+
+# Step 3: To create an 'integrated' data assay.
+
+combined <- IntegrateData(anchorset = anchors)
+
+DefaultAssay(combined) <- "integrated"
+
+# Step 4: Use the standard workflow detailed before to ScaleData, RunPCA, RunUMAP, FindNeighbors and FlindClusters.
+
+combined <- ScaleData(combined, verbose = FALSE)
+combined <- RunPCA(combined, npcs = 20, verbose = FALSE)
+combined <- RunUMAP(combined, reduction = "pca", dims = 1:20)
+combined <- FindNeighbors(combined, reduction = "pca", dims = 1:20)
+combined <- FindClusters(combined, resolution = 2.0)
+
+######################################
+######### Save seurat_object #########
+######################################
+
+SaveH5Seurat(seurat_object, filename = "seurat_object", overwrite = TRUE)
+
+#########################################################################################################
+#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+#~#~#~#~#~#~#~#~#                          Gene analysis                          #~#~#~#~#~#~#~#~#~#~#~#
+#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+#########################################################################################################
+
+################################
+######### Gene browser #########
+################################
+
+genes <- c("genes")
+
+FeaturePlot(seurat_object, features = genes, pt.size = 0.4)
+RidgePlot(seurat_object, features= genes, log = FALSE, sort = "increasing/decreasing")
+VlnPlot(seurat_object, features = genes, slot= "counts")
+
+# For the heatmaps load a gene signaure
+
+DoHeatmap(seurat_object, features = genes, group.colors = NULL)
+
+#########################################################
+######### Reanalyze only the CD8+ subpopulation #########
+#########################################################
+
+# E.g. CD8A positive cells not expressing NEDD8
+
+CD8 <- subset(seurat_object, subset = CD8A > 0) # Use ==, > or <
+CD8 <- ScaleData(CD8, features = all.genes)
+CD8 <- RunPCA(CD8, features = VariableFeatures(object = CD8))
+ElbowPlot(CD8)
+CD8 <- FindNeighbors(CD8, dims = 1:20)
+CD8 <- FindClusters(CD8, resolution = 2.0)
+CD8 <- RunUMAP(CD8, dims = 1:20)
+
+DimPlot(CD8, reduction = "umap", label = TRUE, repel = TRUE)
+
+#####################################################
+######### Obtain counts for a specific gene #########
+#####################################################
+
+head(combined@assays[["RNA"]]@counts)
+
+##########################################################################################################
+#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~
+#~#~#~#~#~#~#~#~#                            ProjecTILs                            #~#~#~#~#~#~#~#~#~#~#~#
+#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~
+##########################################################################################################
+
+# Tutorial: https://github.com/carmonalab/ProjecTILs
+
+#################################################
+######### Load reference and query data #########
+#################################################
+
+ref <- load.reference.map() # The .rds file could be downloaded from this repository
+
+seurat_object
+
+DefaultAssay(seurat_object) <- "RNA"
+
+###############################################################
+######### Make projection of query onto the reference #########
+###############################################################
+
+seurat_object_projected <- make.projection(seurat_object, ref=ref, filter.cells= F, skip.normalize = T)
+plot.projection(ref, seurat_object_projected)
+
+# Number of cells in each predicted cell-type group:
+seurat_object_cellstate <- cellstate.predict(ref = ref, query = seurat_object)
+table(seurat_object_cellstate$functional.cluster)
+
+# Percentage of cells in each predicted cell-type group (bargraphs):
+plot.statepred.composition(ref, query = seurat_object_cellstate, metric = "Percent") + ggtitle("title") + ylim(0, 40)
+
+# Radar plots showing the expression of a desired gene list:
+plot.states.radar(ref, query = seurat_object_cellstate, min.cells = 50, genes4radar = c("Foxp3", "Cd4", "Cd8a", "Tcf7", "Ccr7", "Gzmb", "Pdcd1", "Havcr2", "Tox", "Entpd1", "Cxcr5", "Ifng", "Cxcl13", "Xcl1", "Itgae"))
+
+###############################################################
+######### Project a subpopulation onto the reference ##########
+###############################################################
+
+# By seurat_clusters (e.g. 13):
+pop.13 <- subset(seurat_object, subset = seurat_clusters == 13)
+pop.13.projected <- make.projection(pop.13, ref=ref, filter.cells= F, skip.normalize = T)
+plot.projection(ref, pop.13.projected)
+
+# By gene_expression (e.g. NEDD8):
+pop.NEDD8 <- subset(seurat_object, subset = NEDD8 == 0)
+pop.NEDD8.projected <- make.projection(pop.NEDD8, ref=ref, filter.cells= F, skip.normalize = T)
+plot.projection(ref, pop.NEDD8.projected)
+
+###############################
+######### Print plots #########
+###############################
+
+tiff('file_name.tiff', res=600, width = 8000, height = 4000, units='px', compression = 'lzw')
+plot
+dev.off()
+
+##########################################################################################################
+#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~
+#~#~#~#~#~#~#~#~#                            By AP Lab                            #~#~#~#~#~#~#~#~#~#~#~#~
+#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~
+##########################################################################################################
