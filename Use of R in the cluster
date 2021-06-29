@@ -1,0 +1,49 @@
+#################################################
+### Arrancar R en Indar a traves del terminal ###
+#################################################
+
+# Conectado desde cualquier red:
+ssh -X -p 22897 person@150.241.249.25
+
+# Conectado desde un cable de red en bioGUNE:
+ssh -X -p 22897 eprieto@hd04.cicbiogune.int
+
+##############################################################
+### Pedir una sesion interactiva en el cluster e iniciar R ###
+##############################################################
+
+salloc -N 1 -n 50 --mem=400G -t 6-23:59:00 --partition=NORMAL --job-name=JOB_NAME           # Esto son los parametros máximos que se pueden pedir
+ssh gn03	                                                                                  # Poner el nodo que diga el cluster. Puede variar.
+cic-R4.0.5
+R
+
+#######################
+### Instalar Seurat ###
+#######################
+
+install.packages("Seurat", dependencies = T)
+
+# Para poder instalar Seurat, el entorno Linux debe tener instalados algunos paquetes a traves de informatica:
+sudo apt-get install RcppGSL openssl png hdf5r RcppZiggurat httr reticulate Rfast leiden plotly enrichR Rfast2
+
+
+#################################################################
+### Crear un objeto Seurat a partir de una matrix (.txt) en R ###
+#################################################################
+
+library(Seurat)
+library(SeuratData)
+library(SeuratDisk)
+
+setwd()                                                                                     # Indicar el directorio donde leer y escribir los archivos
+
+data <- read.table(file = "matrix.txt.gz", header = T, sep="\t")
+seurat_object <- CreateSeuratObject(data)
+SaveH5Seurat(seurat_object, filename = "seurat_object", overwrite = TRUE)
+
+##################################################
+### Finalizar la sesión al terminal el trabajo ###
+##################################################
+
+squeue                                                                                      # Ver todas las sesiones abiertas 
+scancel		                                                                                  # E indicar el número del trabajo
