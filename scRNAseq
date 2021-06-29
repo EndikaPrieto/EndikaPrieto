@@ -308,6 +308,7 @@ DoHeatmap(seurat_object, features = genes, group.colors = NULL)
 # E.g. CD8A positive cells not expressing NEDD8
 
 CD8 <- subset(seurat_object, subset = CD8A > 0) # Use ==, > or <
+all.genes <- rownames(CD8)
 CD8 <- ScaleData(CD8, features = all.genes)
 CD8 <- RunPCA(CD8, features = VariableFeatures(object = CD8))
 ElbowPlot(CD8)
@@ -321,7 +322,7 @@ DimPlot(CD8, reduction = "umap", label = TRUE, repel = TRUE)
 ######### Obtain counts for a specific gene #########
 #####################################################
 
-head(combined@assays[["RNA"]]@counts)
+head(seurat_object@assays[["RNA"]]@counts)
 
 ##########################################################################################################
 #~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~
