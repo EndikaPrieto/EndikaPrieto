@@ -309,6 +309,7 @@ DoHeatmap(seurat_object, features = genes, group.colors = NULL)
 
 CD8 <- subset(seurat_object, subset = CD8A > 0) # Use ==, > or <
 all.genes <- rownames(CD8)
+CD8 <- FindVariableFeatures(CD8, selection.method = "vst", nfeatures = 3000, verbose = T)
 CD8 <- ScaleData(CD8, features = all.genes)
 CD8 <- RunPCA(CD8, features = VariableFeatures(object = CD8))
 ElbowPlot(CD8)
