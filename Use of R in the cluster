@@ -8,7 +8,7 @@ ssh -X -p 22897 person@150.241.249.25
 # Conectado desde un cable de red en bioGUNE:
 ssh -X -p 22897 eprieto@hd04.cicbiogune.int
 
-# Desde el ordenador personal:
+# Desde el ordenador personal de CIC bioGUNE:
 ssh eprieto@hd04.cicibiogune.int
 
 ##############################################################
@@ -36,14 +36,12 @@ install.packages('Seurat', repos='https://cran.rediris.es/')
 #################################################################
 
 library(Seurat)
-library(SeuratData)
-library(SeuratDisk)
 
-setwd()                                                                                     # Indicar el directorio donde leer y escribir los archivos
-
-data <- read.table(file = "matrix.txt.gz", header = T, sep="\t")
+file_path <- getwd                                                                          # Indicar el directorio donde leer y escribir los archivos
+file_path <- paste0(file_path, "/matrix.txt.gz")
+data <- read.table(file = file_path, header = T, sep="\t")
 seurat_object <- CreateSeuratObject(data)
-SaveH5Seurat(seurat_object, filename = "seurat_object", overwrite = TRUE)
+saveRDS(seurat_object, "seurat_object.rds")
 
 ##################################################
 ### Finalizar la sesión al terminal el trabajo ###
