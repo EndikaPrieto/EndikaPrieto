@@ -15,8 +15,13 @@ ssh eprieto@hd04.cicibiogune.int
 ### Pedir una sesion interactiva en el cluster e iniciar R ###
 ##############################################################
 
+# No es necesario
 salloc -N 1 -n 50 --mem=400G -t 6-23:59:00 --partition=NORMAL --job-name=JOB_NAME           # Esto son los parametros máximos que se pueden pedir
 ssh gn03	                                                                                  # Poner el nodo que diga el cluster. Puede variar.
+cic-R4.0.5
+R
+
+# Basta con navegar hasta la carpeta donde estan los archivos y hacer lo siguiente:
 cic-R4.0.5
 R
 
@@ -24,11 +29,7 @@ R
 ### Instalar Seurat ###
 #######################
 
-install.packages("Seurat", dependencies = T)
-
-# Para poder instalar Seurat, el entorno Linux debe tener instalados algunos paquetes a traves de informatica:
-sudo apt-get install RcppGSL openssl png hdf5r RcppZiggurat httr reticulate Rfast leiden plotly enrichR Rfast2
-
+install.packages('Seurat', repos='https://cran.rediris.es/')
 
 #################################################################
 ### Crear un objeto Seurat a partir de una matrix (.txt) en R ###
