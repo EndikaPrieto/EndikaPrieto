@@ -8,6 +8,9 @@ ssh -X -p 22897 person@150.241.249.25
 # Conectado desde un cable de red en bioGUNE:
 ssh -X -p 22897 eprieto@hd04.cicbiogune.int
 
+# Desde el ordenador personal:
+ssh eprieto@hd04.cicibiogune.int
+
 ##############################################################
 ### Pedir una sesion interactiva en el cluster e iniciar R ###
 ##############################################################
