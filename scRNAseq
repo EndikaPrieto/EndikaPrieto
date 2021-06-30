@@ -333,13 +333,16 @@ head(seurat_object@assays[["RNA"]]@counts)
 
 # Tutorial: https://github.com/carmonalab/ProjecTILs
 
+# https://ndownloader.figshare.com/files/23136746
+
+# Contact: massimo.andreatta@unil.ch
+# Paper: https://github.com/carmonalab/ProjecTILs
+
 #################################################
 ######### Load reference and query data #########
 #################################################
 
-ref <- load.reference.map() # The .rds file could be downloaded from this repository
-
-seurat_object
+ref <- load.reference.map()
 
 DefaultAssay(seurat_object) <- "RNA"
 
