@@ -69,9 +69,9 @@ data <- read.csv('file.csv', header=T, row.names=1, sep = ",", dec = ".")
 
 # Option 3: using barcodes.tsv.gz, genes.tsv.gz and matrix.mtx.gz. Files must contain those specific names.
 
-seurat_object_dir <- 'C:/filepath'
-list.files(seurat_object_dir)
-data <- Read10X(seurat_object.dir = seurat_object_dir)
+data_dir <- 'C:/filepath'
+list.files(data_dir)
+data <- Read10X(data.dir = data_dir)
 
 # Option 4: load .h5seurat objects
 
@@ -83,7 +83,7 @@ matrix_dir <- 'C:/filepath'
 
 barcode.path <- paste0(matrix_dir, 'barcodes.tsv.gz')
 features.path <- paste0(matrix_dir, 'features.tsv.gz')
-metaseurat_object.path <- paste0(matrix_dir, 'metaseurat_object.tsv.gz')
+metadata.path <- paste0(matrix_dir, 'metadata.tsv.gz')
 
 matrix.path <- paste0(matrix_dir, 'matrix.mtx.gz')
 mat <- readMM(file = matrix.path) 
@@ -101,7 +101,7 @@ colnames(mat) <- barcode.names$V1
 rownames(mat) <- feature.names$SYMBOL
 
 
-metaseurat_object <- read.delim(metaseurat_object.path,
+metadata <- read.delim(metadata.path,
                                header = TRUE,
                                stringsAsFactors = FALSE,
                                row.names = 1)                 # Metadata should be added at the CreateSeurat step.
@@ -120,7 +120,7 @@ DefaultAssay(seurat_object) <- "integrated/RNA"
 seurat_object <- CreateSeuratObject(counts = expression_matrix, meta.data = 'metadata_object')
 
 # Option 2
-seurat_object <- AddMetaseurat_object(object = 'seuratobject', metaseurat_object = 'metadata_object')
+seurat_object <- AddMetadata(object = 'seurat_object', metadata = 'metadata')
 
 ############################################################################################################
 ######### Create the Seurat object from merged file including "R" or "NR" within the sample names ##########
@@ -175,7 +175,7 @@ plot1 + plot2
 ######### Normalize the Seurat object ##########
 ################################################
 
-seurat_object <- Normalizeseurat_object(seurat_object, normalization.method = "LogNormalize", scale.factor = 10000)
+seurat_object <- NormalizeData(seurat_object, normalization.method = "LogNormalize", scale.factor = 10000)
 
 ###############################################################
 ######### Identification of highly variable features ##########
@@ -194,7 +194,7 @@ seurat_object <- FindVariableFeatures(seurat_object, selection.method = "vst", n
 ##############################################
 
 seurat_object.genes <- rownames(seurat_object)
-seurat_object <- Scaleseurat_object(seurat_object, features = seurat_object.genes)
+seurat_object <- ScaleData(seurat_object, features = seurat_object.genes)
 
 ########################################################################################
 ######### Perform linear dimensional reduction and determine 'dimensionality' ##########
@@ -251,8 +251,8 @@ p1 + p2 + p3
 
 # Step 1: To normalize and identify variable features for each Seurat object independently.
 
-liseurat_objectt <- lapply(X = c(seurat_object1, seurat_object2), FUN = function(x) {
-    x <- NormalizeData(x)
+seurat_object <- lapply(X = c(seurat_object1, seurat_object2), FUN = function(x) {
+  x <- NormalizeData(x)
   x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 3000)
 })
 
