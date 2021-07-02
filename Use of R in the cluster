@@ -40,7 +40,7 @@ library(Seurat)
 file_path <- getwd                                                                          # Indicar el directorio donde leer y escribir los archivos
 file_path <- paste0(file_path, "/matrix.txt.gz")
 data <- read.table(file = file_path, header = T, sep="\t")
-seurat_object <- CreateSeuratObject(data)
+seurat_object <- CreateSeuratObject(data, min.cells = 3, min.features = 200)
 saveRDS(seurat_object, "seurat_object.rds")
 
 ##################################################
